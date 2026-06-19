@@ -1,0 +1,75 @@
+import { nodeRegistry } from "@/app/[email]/dashboard/[workflowId]/my-components/nodes/NodeRegistry";
+import { NodeExecutorType } from "../types";
+import { NodeType } from "@/app/[email]/dashboard/[workflowId]/my-components/nodes/type";
+import { prisma } from "@/lib/prisma";
+import { NodeExecutionData, Prisma } from "@/generated/prisma/client";
+
+export const nodeExecutor: NodeExecutorType = async (node, outputs, executionId, inputs?) => {
+	try {
+
+		//handle any vars in config 
+
+		const handler = nodeRegistry[node.type!].nodeHandler
+		const nData = node.data as NodeType
+
+		if (!handler) {
+			console.log("RAN:", node.type!)
+			return {
+				status: "Success",
+				message: "No handler is created for this node"
+			}
+		}
+
+		const output = await handler(nData)
+		outputs.set(node.id, output)
+		console.log(`RAN: ${node.type} Status: ${output.status}`)
+		console.log(`Output: ${JSON.stringify(output.output)}`)
+
+		let nodeData = await prisma.nodeExecutionData.findFirst({
+			where: {
+				executionid: executionId,
+				nodeid: node.id
+			},
+		})
+
+		if (!nodeData) {
+			nodeData = await prisma.nodeExecutionData.create({
+				data: {
+					executionid: executionId,
+					nodeid: node.id
+
+				}
+			})
+
+		}
+
+		if (!nodeData) throw new Error(`Unexpected Error with Node [${node.id}]`)
+
+		await prisma.nodeExecutionData.update({
+			where: {
+				id: nodeData.id,
+			},
+			data: {
+				status: output.status,
+				message: output.errorMessage ?? "Success Completed",
+				output: output.output as Prisma.InputJsonValue,
+				input: nData.input as Prisma.InputJsonValue,
+			}
+		})
+
+		if (output.status == "Failed") throw new Error(`Node [${node.id}] failed to run,\n 
+							       Message: ${output.errorMessage}
+							       `)
+		return {
+			status: "Success",
+			message: `Node [${node.id}] - successfully executed`
+		}
+	}
+	catch (e) {
+		const err = e as Error
+		return {
+			status: "Failed",
+			message: err.message
+		}
+	}
+}

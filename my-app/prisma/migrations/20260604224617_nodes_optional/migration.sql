@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Versions" ALTER COLUMN "nodes" DROP NOT NULL,
+ALTER COLUMN "edges" DROP NOT NULL;

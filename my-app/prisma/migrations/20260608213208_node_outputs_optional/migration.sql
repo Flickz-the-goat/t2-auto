@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "Executions" ALTER COLUMN "outputs" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "NodeExecutionData" ALTER COLUMN "status" DROP NOT NULL,
+ALTER COLUMN "message" DROP NOT NULL,
+ALTER COLUMN "output" DROP NOT NULL,
+ALTER COLUMN "nodeid" DROP NOT NULL;
